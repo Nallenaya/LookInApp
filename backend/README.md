@@ -29,6 +29,19 @@ In addition, [Laracasts](https://laracasts.com) contains thousands of video tuto
 
 You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
 
+## Local setup (Laragon / MySQL)
+
+Create a MySQL database named `lookinapp`, then from the `backend` directory run:
+
+```powershell
+Copy-Item .env.example .env
+composer install
+php artisan key:generate
+php artisan migrate
+```
+
+The default connection uses `127.0.0.1:3306` with the Laragon `root` account and no password. Update the `DB_*` values in `.env` if your local MySQL credentials differ.
+
 ## Agentic Development
 
 Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
