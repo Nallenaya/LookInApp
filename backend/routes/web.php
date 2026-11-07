@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [AdminWebController::class, 'loginForm']);
 Route::get('/admin/login', [AdminWebController::class, 'loginForm'])->name('admin.login');
+Route::get('/admin/reset-password', fn () => view('admin.reset'))->name('admin.password.reset');
 Route::post('/admin/login', [AdminWebController::class, 'login'])->middleware('throttle:10,1')->name('admin.login.submit');
 
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {

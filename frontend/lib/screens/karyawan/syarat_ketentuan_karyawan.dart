@@ -71,3 +71,4 @@ class SyaratKetentuanKaryawanScreen extends StatelessWidget {
     );
   }
 }
+

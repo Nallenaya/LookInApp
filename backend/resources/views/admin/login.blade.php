@@ -244,7 +244,7 @@
                     <input type="checkbox" name="remember" checked>
                     <span>Ingat Saya</span>
                 </label>
-                <a href="#" class="forgot-password">Lupa Password?</a>
+                <a href="{{ route('admin.password.reset') }}" class="forgot-password">Lupa Password?</a>
             </div>
 
             <button type="submit" class="btn-submit">LOGIN</button>
