@@ -1,20 +1,27 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import 'dashboard_components.dart';
+import 'hrd/hrd_common_widgets.dart';
 import 'karyawan/home_karyawan.dart';
-import 'karyawan/riwayat_karyawan.dart';
+import 'karyawan/kebijakan_privasi_karyawan.dart';
+import 'karyawan/my_profile_karyawan.dart';
 import 'karyawan/pengajuan_karyawan.dart';
 import 'karyawan/profile_karyawan.dart';
+import 'karyawan/riwayat_karyawan.dart';
+import 'karyawan/settings_karyawan.dart';
+import 'karyawan/syarat_ketentuan_karyawan.dart';
 
 export 'karyawan/home_karyawan.dart';
 export 'karyawan/riwayat_karyawan.dart';
 export 'karyawan/pengajuan_karyawan.dart';
 export 'karyawan/profile_karyawan.dart';
+export 'karyawan/my_profile_karyawan.dart';
+export 'karyawan/settings_karyawan.dart';
+export 'karyawan/syarat_ketentuan_karyawan.dart';
+export 'karyawan/kebijakan_privasi_karyawan.dart';
 
 class EmployeeDashboard extends StatefulWidget {
   const EmployeeDashboard({super.key, this.api});
@@ -27,12 +34,6 @@ class EmployeeDashboard extends StatefulWidget {
 
 class _EmployeeDashboardState extends State<EmployeeDashboard> {
   static const _titles = ['Home', 'Riwayat', 'Pengajuan', 'Profil'];
-  static const _icons = [
-    Icons.home_outlined,
-    Icons.calendar_month_outlined,
-    Icons.description_outlined,
-    Icons.person_outline,
-  ];
 
   late final ApiService _api;
   int _selectedIndex = 0;
@@ -85,36 +86,9 @@ class _EmployeeDashboardState extends State<EmployeeDashboard> {
     ];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        titleSpacing: 18,
-        title: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.fingerprint, color: Color(0xFF1769FF), size: 25),
-            SizedBox(width: 5),
-            Text(
-              'LookIn',
-              style: TextStyle(
-                color: Color(0xFF17191D),
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          if (_selectedIndex == 3 && _editingProfile)
-            IconButton(
-              tooltip: 'Kembali ke profil',
-              onPressed: () => setState(() => _editingProfile = false),
-              icon: const Icon(Icons.close),
-            ),
-        ],
-      ),
+      backgroundColor: HrdTheme.scaffoldBg,
       body: SafeArea(
+        bottom: false,
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 600),
@@ -122,21 +96,69 @@ class _EmployeeDashboardState extends State<EmployeeDashboard> {
           ),
         ),
       ),
-      bottomNavigationBar: NavigationBar(
-        backgroundColor: Colors.white,
-        indicatorColor: const Color(0xFFE7F0FF),
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: (index) {
-          setState(() {
-            _selectedIndex = index;
-            if (index != 3) _editingProfile = false;
-          });
-        },
-        destinations: List.generate(
-          _titles.length,
-          (index) => NavigationDestination(
-            icon: Icon(_icons[index]),
-            label: _titles[index],
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: List.generate(_titles.length, (index) {
+                    final isSelected = _selectedIndex == index;
+                    return InkWell(
+                      onTap: () {
+                        setState(() {
+                          _selectedIndex = index;
+                          if (index != 3) _editingProfile = false;
+                        });
+                      },
+                      splashColor: Colors.transparent,
+                      highlightColor: Colors.transparent,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 6,
+                        ),
+                        child: Text(
+                          _titles[index],
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight:
+                                isSelected ? FontWeight.w700 : FontWeight.w500,
+                            color: isSelected
+                                ? HrdTheme.primaryBlue
+                                : const Color(0xFF8C95A6),
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+              // iOS-style home indicator bar
+              Container(
+                width: 134,
+                height: 4.5,
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+            ],
           ),
         ),
       ),

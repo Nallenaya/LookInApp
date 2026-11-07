@@ -3,20 +3,19 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Login Admin · LookIn Presensi</title>
+    <title>Login · LookIn Presensi</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary: #0080FF;
-            --primary-hover: #006ee0;
-            --bg: #F3F8FC;
-            --surface: #FFFFFF;
-            --border: #C4D9EC;
-            --text-main: #182230;
+            --primary: #1989F0;
+            --primary-hover: #1272CE;
+            --left-bg: #EAF4FD;
+            --right-bg: #5FA5EC;
+            --text-dark: #1E293B;
             --text-muted: #64748B;
-            --font-family: 'Plus Jakarta Sans', sans-serif;
+            --font: 'Plus Jakarta Sans', sans-serif;
         }
 
         * {
@@ -26,56 +25,54 @@
         }
 
         body {
-            font-family: var(--font-family);
-            background: var(--bg);
-            color: var(--text-main);
+            font-family: var(--font);
             min-height: 100vh;
-            display: grid;
-            place-items: center;
-            padding: 24px;
+            display: flex;
+            background: var(--left-bg);
         }
 
-        .login-card {
-            width: min(100%, 440px);
-            background: var(--surface);
-            border: 1px solid #D5E4F2;
-            border-radius: 24px;
-            padding: 40px;
-            box-shadow: 0 12px 36px rgba(0, 80, 160, 0.08);
-            text-align: center;
+        .login-container {
+            display: flex;
+            width: 100vw;
+            min-height: 100vh;
         }
 
-        .brand-logo {
-            margin-bottom: 24px;
-            display: inline-block;
+        /* Left Side */
+        .left-pane {
+            flex: 1;
+            background: #EAF4FD;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 60px 80px;
+            max-width: 600px;
         }
 
-        .brand-logo img {
-            height: 48px;
-            width: auto;
-            object-fit: contain;
-        }
-
-        h1 {
-            font-size: 24px;
+        .title-login {
+            font-size: 32px;
             font-weight: 800;
-            color: #17406E;
-            margin-bottom: 8px;
-            letter-spacing: -0.5px;
+            color: #0F172A;
+            margin-bottom: 24px;
         }
 
-        p.subtitle {
-            color: var(--text-muted);
+        .welcome-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1E293B;
+            margin-bottom: 6px;
+        }
+
+        .welcome-sub {
             font-size: 14px;
-            margin-bottom: 28px;
+            color: var(--text-muted);
+            margin-bottom: 32px;
         }
 
         .form-group {
-            text-align: left;
             margin-bottom: 20px;
         }
 
-        label {
+        .form-group label {
             display: block;
             font-size: 13px;
             font-weight: 600;
@@ -83,94 +80,186 @@
             margin-bottom: 8px;
         }
 
-        input {
+        .form-group input[type="text"],
+        .form-group input[type="email"],
+        .form-group input[type="password"] {
             width: 100%;
             padding: 13px 16px;
-            border: 1px solid var(--border);
-            border-radius: 10px;
+            background: #FFFFFF;
+            border: 1px solid #7E96AD;
+            border-radius: 8px;
             font-size: 14px;
             font-family: inherit;
-            color: var(--text-main);
-            background: #FFFFFF;
+            color: var(--text-dark);
             outline: none;
             transition: all 0.2s ease;
         }
 
-        input:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(0, 128, 255, 0.12);
+        .form-group input::placeholder {
+            color: #94A3B8;
         }
 
-        button.btn-login {
+        .form-group input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(25, 137, 240, 0.15);
+        }
+
+        .form-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 28px;
+            font-size: 13px;
+        }
+
+        .remember-me {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #334155;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .remember-me input {
+            cursor: pointer;
+            width: 16px;
+            height: 16px;
+            accent-color: var(--primary);
+        }
+
+        .forgot-password {
+            color: #0284C7;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .forgot-password:hover {
+            text-decoration: underline;
+        }
+
+        .btn-submit {
             width: 100%;
-            margin-top: 10px;
-            border: none;
-            border-radius: 10px;
+            padding: 14px;
             background: var(--primary);
             color: #FFFFFF;
-            padding: 14px;
             font-size: 15px;
             font-weight: 700;
+            border: none;
+            border-radius: 8px;
             cursor: pointer;
-            font-family: inherit;
             transition: background 0.2s ease;
         }
 
-        button.btn-login:hover {
+        .btn-submit:hover {
             background: var(--primary-hover);
         }
 
         .error-alert {
-            background: #FFF1F0;
-            color: #D32F2F;
-            border: 1px solid #FFCCC7;
-            border-radius: 10px;
+            background: #FEF2F2;
+            color: #B91C1C;
+            border: 1px solid #FECACA;
+            border-radius: 8px;
             padding: 12px 16px;
             font-size: 13px;
-            font-weight: 600;
             margin-bottom: 20px;
-            text-align: left;
         }
 
-        .hint {
-            font-size: 13px;
-            color: #8FA0B5;
-            margin-top: 24px;
-            line-height: 1.5;
+        /* Right Side */
+        .right-pane {
+            flex: 1.2;
+            background: radial-gradient(circle at center, #67AEF5 0%, #4489D8 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .right-card {
+            background: #3B82F6;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 28px;
+            padding: 70px 50px;
+            max-width: 480px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+        }
+
+        .right-card .logo-img {
+            max-width: 260px;
+            margin-bottom: 50px;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
+        }
+
+        .quote-text {
+            color: #FFFFFF;
+            font-size: 22px;
+            font-weight: 600;
+            line-height: 1.55;
+            letter-spacing: -0.2px;
+        }
+
+        @media (max-width: 900px) {
+            .right-pane {
+                display: none;
+            }
+            .left-pane {
+                max-width: 100%;
+                padding: 40px 24px;
+            }
         }
     </style>
 </head>
 <body>
-<main class="login-card">
-    <div class="brand-logo">
-        <img src="{{ asset('assets/design/lookin-logo.png') }}" alt="LookIn" onerror="this.src='{{ asset('assets/design/logo.png') }}'">
+<div class="login-container">
+    <!-- Left Pane: Form Login -->
+    <div class="left-pane">
+        <h1 class="title-login">Login</h1>
+        <h2 class="welcome-title">Selamat Datang</h2>
+        <p class="welcome-sub">Silakan masukkan data login presensi Anda</p>
+
+        @if ($errors->any())
+            <div class="error-alert">
+                {{ $errors->first() }}
+            </div>
+        @endif
+
+        <form method="POST" action="{{ route('admin.login.submit') }}">
+            @csrf
+            <div class="form-group">
+                <label for="email">Email ID</label>
+                <input id="email" name="email" type="email" value="{{ old('email', 'admin@lookin.com') }}" placeholder="Masukkan Email ID" required autofocus>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input id="password" name="password" type="password" value="password123" placeholder="Password" required>
+            </div>
+
+            <div class="form-row">
+                <label class="remember-me">
+                    <input type="checkbox" name="remember" checked>
+                    <span>Ingat Saya</span>
+                </label>
+                <a href="#" class="forgot-password">Lupa Password?</a>
+            </div>
+
+            <button type="submit" class="btn-submit">LOGIN</button>
+        </form>
     </div>
 
-    <h1>Admin Dashboard</h1>
-    <p class="subtitle">Masuk ke panel web administrator LookIn.</p>
-
-    @if ($errors->any())
-        <div class="error-alert" role="alert">
-            {{ $errors->first() }}
+    <!-- Right Pane: LookIn Card & Quote -->
+    <div class="right-pane">
+        <div class="right-card">
+            <img class="logo-img" src="{{ asset('assets/design/lookin-logo.png') }}" alt="LookIn" onerror="this.src='{{ asset('assets/design/logo.png') }}'">
+            <p class="quote-text">
+                “Kehadiran adalah langkah pertama menuju kesuksesan. Hadirlah untuk meraih keberhasilan.”
+            </p>
         </div>
-    @endif
-
-    <form method="POST" action="{{ route('admin.login.submit') }}">
-        @csrf
-        <div class="form-group">
-            <label for="email">Email Admin</label>
-            <input id="email" name="email" type="email" value="{{ old('email', 'admin@lookin.com') }}" autocomplete="username" required autofocus>
-        </div>
-
-        <div class="form-group">
-            <label for="password">Password</label>
-            <input id="password" name="password" type="password" value="password123" autocomplete="current-password" required>
-        </div>
-
-        <button type="submit" class="btn-login">Masuk ke Dashboard</button>
-    </form>
-
-    <p class="hint">Akun HRD dan karyawan masuk melalui aplikasi LookIn Mobile.</p>
-</main>
+    </div>
+</div>
 </body>
 </html>

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../services/api_service.dart';
+import '../hrd/hrd_common_widgets.dart';
 
 class EmployeeHomePanel extends StatefulWidget {
   const EmployeeHomePanel({
@@ -101,335 +102,446 @@ class _EmployeeHomePanelState extends State<EmployeeHomePanel> {
 
   @override
   Widget build(BuildContext context) {
+    final name = _profile['name']?.toString() ?? 'Papoi';
+    final position = _profile['position']?.toString() ??
+        _profile['division']?.toString() ??
+        'Kepala Divisi';
+    final branch = _profile['branch']?.toString() ?? 'Kantor Yogyakarta';
+
     final attendance = _todayAttendance;
     final hasCheckedIn = attendance != null;
     final hasCheckedOut =
         attendance != null && attendance['jam_pulang'] != null;
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-      children: [
-        Row(
-          children: [
-            CircleAvatar(
-              radius: 25,
-              backgroundColor: Colors.white,
-              child: Icon(
-                Icons.person,
-                size: 31,
-                color: Colors.blueGrey.shade800,
+    final inTime = hasCheckedIn
+        ? _formatTimeDisplay(attendance['jam_masuk']?.toString())
+        : '06:50 AM';
+    final outTime = hasCheckedOut
+        ? _formatTimeDisplay(attendance['jam_pulang']?.toString())
+        : '--:--';
+
+    return RefreshIndicator(
+      onRefresh: _load,
+      color: HrdTheme.primaryBlue,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+        children: [
+          // Top LookIn Logo
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Image.asset(
+                'assets/images/lookin_logo.png',
+                height: 24,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.fingerprint, color: HrdTheme.primaryBlue, size: 24),
+                    SizedBox(width: 4),
+                    Text(
+                      'LookIn',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: HrdTheme.textDark,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${_greeting(_now.hour)}, ${_profile['name'] ?? 'Karyawan'}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Color(0xFF1769FF),
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
+          ),
+
+          // User Greeting Row
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 26,
+                backgroundColor: Colors.white,
+                child: ClipOval(
+                  child: Image.asset(
+                    'assets/images/avatar_hrd.png',
+                    width: 52,
+                    height: 52,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const Icon(
+                      Icons.person,
+                      size: 32,
+                      color: HrdTheme.textDark,
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  const Text(
-                    'Karyawan',
-                    style: TextStyle(color: Color(0xFF7C8798), fontSize: 13),
-                  ),
-                ],
+                ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 36),
-        Text(
-          _formattedDate(_now),
-          textAlign: TextAlign.center,
-          style: const TextStyle(color: Color(0xFF00BCEB), fontSize: 14),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          '${_now.hour.toString().padLeft(2, '0')}:${_now.minute.toString().padLeft(2, '0')}',
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Color(0xFF0787F9),
-            fontSize: 52,
-            height: 1,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 10),
-        const Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.location_on, size: 16, color: Color(0xFF667085)),
-            SizedBox(width: 4),
-            Text(
-              'Lokasi kantor',
-              style: TextStyle(color: Color(0xFF667085), fontSize: 12),
-            ),
-          ],
-        ),
-        const SizedBox(height: 28),
-        Row(
-          children: [
-            Expanded(
-              child: _AttendanceAction(
-                label: 'Clock In',
-                icon: Icons.login,
-                color: const Color(0xFF08A84A),
-                background: const Color(0xFFDDFBE8),
-                enabled:
-                    !_loading && _error == null && !_saving && !hasCheckedIn,
-                onTap: () => _record('check-in'),
-              ),
-            ),
-            const SizedBox(width: 24),
-            Expanded(
-              child: _AttendanceAction(
-                label: 'Clock Out',
-                icon: Icons.logout,
-                color: const Color(0xFFF04444),
-                background: const Color(0xFFFFE3E3),
-                enabled:
-                    !_loading &&
-                    _error == null &&
-                    !_saving &&
-                    hasCheckedIn &&
-                    !hasCheckedOut,
-                onTap: () => _record('check-out'),
-              ),
-            ),
-          ],
-        ),
-        if (_saving)
-          const Padding(
-            padding: EdgeInsets.only(top: 12),
-            child: Center(
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            ),
-          ),
-        if (_error != null) ...[
-          const SizedBox(height: 16),
-          _EmployeeErrorCard(message: _error!, onRetry: _load),
-        ],
-        const SizedBox(height: 24),
-        Row(
-          children: [
-            _QuickAction(
-              label: 'Cuti',
-              icon: Icons.work_outline,
-              onTap: () => widget.onRequest('cuti'),
-            ),
-            _QuickAction(
-              label: 'Izin',
-              icon: Icons.description_outlined,
-              onTap: () => widget.onRequest('izin'),
-            ),
-            _QuickAction(
-              label: 'Sakit',
-              icon: Icons.sick_outlined,
-              onTap: () => widget.onRequest('sakit'),
-            ),
-            _QuickAction(
-              label: 'Lembur',
-              icon: Icons.night_shelter_outlined,
-              onTap: () => widget.onRequest('lembur'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 24),
-        const Text(
-          'Aktivitas Hari Ini',
-          style: TextStyle(color: Color(0xFF667085), fontSize: 13),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Column(
-            children: [
-              _ActivityRow(
-                label: 'Jam Masuk',
-                time: _formattedTime(attendance?['jam_masuk']),
-                icon: Icons.login,
-                color: const Color(0xFF08A84A),
-                background: const Color(0xFFDDFBE8),
-              ),
-              const Divider(height: 20, color: Color(0xFFF0F2F5)),
-              _ActivityRow(
-                label: 'Jam Pulang',
-                time: _formattedTime(attendance?['jam_pulang']),
-                icon: Icons.logout,
-                color: const Color(0xFFF04444),
-                background: const Color(0xFFFFE3E3),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${_greeting(_now.hour)}, $name',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: HrdTheme.primaryBlue,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      position,
+                      style: const TextStyle(
+                        color: HrdTheme.textGrey,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-        ),
-        if (_loading)
-          const Padding(
-            padding: EdgeInsets.only(top: 14),
-            child: Center(child: CircularProgressIndicator()),
+          const SizedBox(height: 24),
+
+          // Center Cyan Date, Big Time, and Location
+          Center(
+            child: Column(
+              children: [
+                Text(
+                  _formattedDate(_now),
+                  style: const TextStyle(
+                    color: HrdTheme.cyanDate,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _formatClockTime(_now),
+                  style: const TextStyle(
+                    fontSize: 54,
+                    height: 1.1,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF007AFF),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.location_on,
+                      size: 16,
+                      color: Color(0xFF4B5563),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      branch,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF4B5563),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-      ],
+          const SizedBox(height: 24),
+
+          // Clock In & Clock Out Cards
+          Row(
+            children: [
+              Expanded(
+                child: _ClockActionButton(
+                  icon: Icons.login,
+                  iconColor: const Color(0xFF10B981),
+                  iconBg: const Color(0xFFD1FAE5),
+                  label: 'Clock In',
+                  isLoading: _saving,
+                  onTap: () => _record('check-in'),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: _ClockActionButton(
+                  icon: Icons.logout,
+                  iconColor: const Color(0xFFEF4444),
+                  iconBg: const Color(0xFFFEE2E2),
+                  label: 'Clock Out',
+                  isLoading: _saving,
+                  onTap: () => _record('check-out'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // 4 Category Icons: Cuti, Izin, Sakit, Lembur
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _CategoryItem(
+                imagePath: 'assets/images/icon_cuti.png',
+                fallbackIcon: Icons.work_outline,
+                label: 'Cuti',
+                onTap: () => widget.onRequest('cuti'),
+              ),
+              _CategoryItem(
+                imagePath: 'assets/images/icon_izin.png',
+                fallbackIcon: Icons.edit_note,
+                label: 'Izin',
+                onTap: () => widget.onRequest('izin'),
+              ),
+              _CategoryItem(
+                imagePath: 'assets/images/icon_sakit.png',
+                fallbackIcon: Icons.sick_outlined,
+                label: 'Sakit',
+                onTap: () => widget.onRequest('sakit'),
+              ),
+              _CategoryItem(
+                imagePath: 'assets/images/icon_lembur.png',
+                fallbackIcon: Icons.nights_stay_outlined,
+                label: 'Lembur',
+                onTap: () => widget.onRequest('lembur'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Aktivitas Hari Ini Section
+          const Text(
+            'Aktivitas Hari Ini',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF4B5563),
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // Aktivitas Card
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: HrdTheme.cardShadow,
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFD1FAE5),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.login,
+                        color: Color(0xFF10B981),
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Jam Masuk',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: HrdTheme.textGrey,
+                          ),
+                        ),
+                        Text(
+                          inTime,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF0066FF),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFFEE2E2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.logout,
+                        color: Color(0xFFEF4444),
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Jam Pulang',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: HrdTheme.textGrey,
+                          ),
+                        ),
+                        Text(
+                          outTime,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF0066FF),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
-class _AttendanceAction extends StatelessWidget {
-  const _AttendanceAction({
-    required this.label,
+class _ClockActionButton extends StatelessWidget {
+  const _ClockActionButton({
     required this.icon,
-    required this.color,
-    required this.background,
-    required this.enabled,
+    required this.iconColor,
+    required this.iconBg,
+    required this.label,
+    required this.isLoading,
     required this.onTap,
   });
 
-  final String label;
   final IconData icon;
-  final Color color;
-  final Color background;
-  final bool enabled;
+  final Color iconColor;
+  final Color iconBg;
+  final String label;
+  final bool isLoading;
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => Material(
-    color: Colors.white,
-    borderRadius: BorderRadius.circular(28),
-    child: InkWell(
-      onTap: enabled ? onTap : null,
-      borderRadius: BorderRadius.circular(28),
-      child: SizedBox(
-        height: 126,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: enabled ? background : const Color(0xFFF0F2F5),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                icon,
-                color: enabled ? color : const Color(0xFF98A2B3),
-                size: 26,
-              ),
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: HrdTheme.cardShadow,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: isLoading ? null : onTap,
+          borderRadius: BorderRadius.circular(18),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            child: Column(
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: iconBg,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: iconColor, size: 28),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF8B2500),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: TextStyle(
-                color: enabled ? const Color(0xFF9A4A4A) : Colors.grey,
-                fontSize: 12,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
-class _QuickAction extends StatelessWidget {
-  const _QuickAction({
+class _CategoryItem extends StatelessWidget {
+  const _CategoryItem({
+    required this.imagePath,
+    required this.fallbackIcon,
     required this.label,
-    required this.icon,
     required this.onTap,
   });
 
+  final String imagePath;
+  final IconData fallbackIcon;
   final String label;
-  final IconData icon;
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => Expanded(
-    child: InkWell(
+  Widget build(BuildContext context) {
+    return GestureDetector(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
       child: Column(
         children: [
           Container(
-            height: 64,
-            margin: const EdgeInsets.symmetric(horizontal: 4),
+            width: 56,
+            height: 56,
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(17),
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: HrdTheme.cardShadow,
             ),
-            child: Center(
-              child: Icon(icon, size: 34, color: const Color(0xFF15191F)),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: Image.asset(
+                imagePath,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => Icon(
+                  fallbackIcon,
+                  size: 28,
+                  color: HrdTheme.textDark,
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 8),
           Text(
             label,
-            style: const TextStyle(color: Color(0xFF667085), fontSize: 12),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-class _ActivityRow extends StatelessWidget {
-  const _ActivityRow({
-    required this.label,
-    required this.time,
-    required this.icon,
-    required this.color,
-    required this.background,
-  });
-
-  final String label;
-  final String time;
-  final IconData icon;
-  final Color color;
-  final Color background;
-
-  @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(color: background, shape: BoxShape.circle),
-        child: Icon(icon, color: color, size: 18),
-      ),
-      const SizedBox(width: 14),
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(color: Color(0xFF667085), fontSize: 12),
-          ),
-          const SizedBox(height: 1),
-          Text(
-            time,
             style: const TextStyle(
-              color: Color(0xFF1769FF),
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF4B5563),
             ),
           ),
         ],
       ),
-    ],
-  );
+    );
+  }
+}
+
+String _dateKey(DateTime date) =>
+    '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
+String _greeting(int hour) {
+  if (hour < 11) return 'Selamat pagi';
+  if (hour < 15) return 'Selamat siang';
+  if (hour < 18) return 'Selamat sore';
+  return 'Selamat malam';
 }
 
 String _formattedDate(DateTime date) {
@@ -459,46 +571,13 @@ String _formattedDate(DateTime date) {
   return '${weekdays[date.weekday - 1]}, ${date.day.toString().padLeft(2, '0')} ${months[date.month - 1]} ${date.year}';
 }
 
-String _formattedTime(dynamic value) {
-  final time = value?.toString();
-  if (time == null || time.isEmpty) return '--:--';
-  final parts = time.split(':');
-  if (parts.length < 2) return time;
-  final hour = int.tryParse(parts[0]);
-  final minute = int.tryParse(parts[1]);
-  if (hour == null || minute == null) return time;
-  final suffix = hour >= 12 ? 'PM' : 'AM';
-  final displayHour = hour % 12 == 0 ? 12 : hour % 12;
-  return '${displayHour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')} $suffix';
+String _formatClockTime(DateTime time) {
+  final hour = time.hour.toString().padLeft(2, '0');
+  final minute = time.minute.toString().padLeft(2, '0');
+  return '$hour:$minute';
 }
 
-String _dateKey(DateTime date) =>
-    '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-
-String _greeting(int hour) {
-  if (hour < 11) return 'Selamat pagi';
-  if (hour < 15) return 'Selamat siang';
-  if (hour < 18) return 'Selamat sore';
-  return 'Selamat malam';
+String _formatTimeDisplay(String? timeStr) {
+  if (timeStr == null || timeStr.isEmpty) return '--:--';
+  return timeStr;
 }
-
-class _EmployeeErrorCard extends StatelessWidget {
-  const _EmployeeErrorCard({required this.message, required this.onRetry});
-
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) => Card(
-    child: ListTile(
-      leading: const Icon(Icons.error_outline, color: Colors.red),
-      title: Text(message),
-      trailing: IconButton(
-        tooltip: 'Coba lagi',
-        onPressed: onRetry,
-        icon: const Icon(Icons.refresh),
-      ),
-    ),
-  );
-}
-

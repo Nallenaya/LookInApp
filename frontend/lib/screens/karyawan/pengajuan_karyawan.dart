@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../services/api_service.dart';
+import '../hrd/hrd_common_widgets.dart';
 
 class EmployeeRequestsPanel extends StatefulWidget {
   const EmployeeRequestsPanel({
@@ -23,7 +24,7 @@ class _EmployeeRequestsPanelState extends State<EmployeeRequestsPanel> {
   final _reason = TextEditingController();
   DateTimeRange _dateRange = DateTimeRange(
     start: DateTime.now(),
-    end: DateTime.now(),
+    end: DateTime.now().add(const Duration(days: 2)),
   );
   String _type = 'cuti';
   Map<String, dynamic> _profile = {};
@@ -31,6 +32,7 @@ class _EmployeeRequestsPanelState extends State<EmployeeRequestsPanel> {
   bool _loading = true;
   bool _submitting = false;
   String? _error;
+  String? _uploadedFileName;
 
   static const _requestTypes = {'cuti', 'izin', 'sakit', 'lembur'};
 
@@ -117,6 +119,7 @@ class _EmployeeRequestsPanelState extends State<EmployeeRequestsPanel> {
       });
       if (!mounted) return;
       _reason.clear();
+      setState(() => _uploadedFileName = null);
       _message(result['message']?.toString() ?? 'Pengajuan berhasil dikirim.');
       await _load();
     } catch (error) {
@@ -137,293 +140,442 @@ class _EmployeeRequestsPanelState extends State<EmployeeRequestsPanel> {
 
   @override
   Widget build(BuildContext context) {
+    final name = _profile['name']?.toString() ?? 'Papoi';
+    final position = _profile['position']?.toString() ??
+        _profile['division']?.toString() ??
+        'Kepala Divisi';
     final latestRequest = _requests.isEmpty ? null : _requests.first;
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(17, 14, 17, 24),
-      children: [
-        Row(
-          children: [
-            CircleAvatar(
-              radius: 23,
-              backgroundColor: Colors.white,
-              child: Icon(
-                Icons.person,
-                size: 29,
-                color: Colors.blueGrey.shade800,
+
+    return RefreshIndicator(
+      onRefresh: _load,
+      color: HrdTheme.primaryBlue,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+        children: [
+          // Top LookIn Logo
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Image.asset(
+                'assets/images/lookin_logo.png',
+                height: 24,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.fingerprint, color: HrdTheme.primaryBlue, size: 24),
+                    SizedBox(width: 4),
+                    Text(
+                      'LookIn',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: HrdTheme.textDark,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(width: 11),
-            Expanded(
+          ),
+
+          // User Greeting Row
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 26,
+                backgroundColor: Colors.white,
+                child: ClipOval(
+                  child: Image.asset(
+                    'assets/images/avatar_hrd.png',
+                    width: 52,
+                    height: 52,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const Icon(
+                      Icons.person,
+                      size: 32,
+                      color: HrdTheme.textDark,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${_greeting(DateTime.now().hour)}, $name',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: HrdTheme.primaryBlue,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      position,
+                      style: const TextStyle(
+                        color: HrdTheme.textGrey,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+
+          // Title & Leave Quota Row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Buat Pengajuan',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: HrdTheme.textDark,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDCE8FF),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text(
+                  'Sisa Cuti: 10',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: HrdTheme.primaryBlue,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Main Form Card matching Persetujuan.png
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: HrdTheme.cardShadow,
+            ),
+            padding: const EdgeInsets.all(16),
+            child: Form(
+              key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Selamat pagi, ${_profile['name'] ?? 'Karyawan'}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Color(0xFF1769FF),
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
+                  // Jenis Pengajuan
+                  const Text(
+                    'Jenis Pengajuan',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: HrdTheme.textDark,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 6),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFD1D5DB)),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        value: _type,
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'cuti',
+                            child: Text('Cuti Tahunan'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'izin',
+                            child: Text('Izin'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'sakit',
+                            child: Text('Sakit'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'lembur',
+                            child: Text('Lembur'),
+                          ),
+                        ],
+                        onChanged: (val) {
+                          if (val != null) setState(() => _type = val);
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Rentang Tanggal
                   const Text(
-                    'Karyawan',
-                    style: TextStyle(color: Color(0xFF7C8798), fontSize: 13),
+                    'Rentang Tanggal',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: HrdTheme.textDark,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  GestureDetector(
+                    onTap: _chooseDateRange,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFD1D5DB)),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 13,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '${_displayDate(_dateRange.start)} - ${_displayDate(_dateRange.end)}',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: HrdTheme.textDark,
+                            ),
+                          ),
+                          const Icon(
+                            Icons.calendar_today_outlined,
+                            size: 18,
+                            color: Color(0xFF6B7280),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Keterangan / Alasan
+                  const Text(
+                    'Keterangan / Alasan',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: HrdTheme.textDark,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  TextFormField(
+                    controller: _reason,
+                    maxLines: 4,
+                    decoration: InputDecoration(
+                      hintText: 'Tuliskan keterangan atau alasan...',
+                      hintStyle: const TextStyle(
+                        color: Color(0xFF9CA3AF),
+                        fontSize: 14,
+                      ),
+                      contentPadding: const EdgeInsets.all(14),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: HrdTheme.primaryBlue,
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
+                    validator: (val) {
+                      if (val == null || val.trim().isEmpty) {
+                        return 'Keterangan atau alasan harus diisi.';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Lampiran (Opsional)
+                  const Text(
+                    'Lampiran (Opsional)',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: HrdTheme.textDark,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _uploadedFileName = 'surat_keterangan.pdf';
+                      });
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Berkas berhasil dipilih: surat_keterangan.pdf'),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF9FAFB),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFFD1D5DB),
+                          style: BorderStyle.solid,
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          _uploadedFileName != null
+                              ? '✓ $_uploadedFileName'
+                              : '+ Unggah File (.pdf, .jpg)',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: _uploadedFileName != null
+                                ? HrdTheme.primaryBlue
+                                : const Color(0xFF6B7280),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+
+                  // Kirim Pengajuan Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: FilledButton(
+                      onPressed: _submitting ? null : _submit,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: HrdTheme.primaryBlue,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: _submitting
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              'Kirim Pengajuan',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                    ),
                   ),
                 ],
               ),
             ),
-          ],
-        ),
-        const SizedBox(height: 27),
-        const Text(
-          'Buat Pengajuan',
-          style: TextStyle(
-            color: Color(0xFF151D2D),
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
           ),
-        ),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.fromLTRB(16, 15, 16, 10),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: const Color(0xFFE0E5EB)),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const _RequestFieldLabel('Jenis Pengajuan'),
-                const SizedBox(height: 6),
-                DropdownButtonFormField<String>(
-                  initialValue: _type,
-                  decoration: _requestInputDecoration(),
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'cuti',
-                      child: Text('Cuti Tahunan'),
-                    ),
-                    DropdownMenuItem(value: 'izin', child: Text('Izin')),
-                    DropdownMenuItem(value: 'sakit', child: Text('Izin Sakit')),
-                    DropdownMenuItem(value: 'lembur', child: Text('Lembur')),
-                  ],
-                  onChanged: _submitting
-                      ? null
-                      : (value) => setState(() => _type = value ?? 'cuti'),
-                ),
-                const SizedBox(height: 13),
-                const _RequestFieldLabel('Rentang Tanggal'),
-                const SizedBox(height: 6),
-                InkWell(
-                  onTap: _submitting ? null : _chooseDateRange,
-                  borderRadius: BorderRadius.circular(8),
-                  child: InputDecorator(
-                    decoration: _requestInputDecoration(),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            '${_displayDate(_dateRange.start)} - ${_displayDate(_dateRange.end)}',
-                            style: const TextStyle(
-                              color: Color(0xFF293548),
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                        const Icon(
-                          Icons.calendar_today_outlined,
-                          size: 18,
-                          color: Color(0xFF697789),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 13),
-                const _RequestFieldLabel('Keterangan / Alasan'),
-                const SizedBox(height: 6),
-                TextFormField(
-                  controller: _reason,
-                  minLines: 3,
-                  maxLines: 4,
-                  decoration: _requestInputDecoration(
-                    hintText: 'Tuliskan keterangan atau alasan...',
-                    alignLabelWithHint: true,
-                  ),
-                  validator: (value) => value == null || value.trim().isEmpty
-                       ? 'Alasan harus diisi.'
-                      : null,
-                ),
-                if (_error != null) ...[
-                  const SizedBox(height: 10),
-                  Text(
-                    _error!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                      fontSize: 12,
-                    ),
-                  ),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: _load,
-                      child: const Text('Coba lagi'),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 13),
-                SizedBox(
-                  height: 44,
-                  child: FilledButton(
-                    onPressed: _submitting ? null : _submit,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF2862E9),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                    ),
-                    child: _submitting
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Text(
-                            'Kirim Pengajuan',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                  ),
-                ),
-              ],
+          const SizedBox(height: 22),
+
+          // Status Terakhir Section
+          const Text(
+            'Status Terakhir',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: HrdTheme.textDark,
             ),
           ),
-        ),
-        const SizedBox(height: 15),
-        const Text(
-          'Status Terakhir',
-          style: TextStyle(
-            color: Color(0xFF151D2D),
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 8),
-        if (_loading && latestRequest == null)
-          const Center(child: CircularProgressIndicator())
-        else if (latestRequest != null)
-          _EmployeeLatestRequestCard(request: latestRequest)
-        else
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: const Color(0xFFE0E5EB)),
-              borderRadius: BorderRadius.circular(13),
-            ),
-            child: const Text(
-              'Belum ada pengajuan.',
-              style: TextStyle(color: Color(0xFF778397), fontSize: 13),
-            ),
-          ),
-      ],
+          const SizedBox(height: 10),
+
+          // Latest Request Status Card
+          _buildLatestStatusCard(latestRequest),
+        ],
+      ),
     );
   }
-}
 
-class _RequestFieldLabel extends StatelessWidget {
-  const _RequestFieldLabel(this.label);
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) => Text(
-    label,
-    style: const TextStyle(
-      color: Color(0xFF3B4659),
-      fontSize: 12,
-      fontWeight: FontWeight.w600,
-    ),
-  );
-}
-
-class _EmployeeLatestRequestCard extends StatelessWidget {
-  const _EmployeeLatestRequestCard({required this.request});
-
-  final Map<String, dynamic> request;
-
-  @override
-  Widget build(BuildContext context) {
-    final status = request['status']?.toString() ?? 'pending';
-    final statusColor = switch (status) {
-      'approved' => const Color(0xFF08765B),
-      'rejected' => const Color(0xFFB42318),
-      _ => const Color(0xFF9A6700),
+  Widget _buildLatestStatusCard(Map<String, dynamic>? item) {
+    final type = item?['type']?.toString() ?? 'sakit';
+    final title = switch (type) {
+      'cuti' => 'Cuti Tahunan',
+      'izin' => 'Izin',
+      'sakit' => 'Izin Sakit',
+      'lembur' => 'Lembur',
+      _ => 'Pengajuan',
     };
-    final statusBackground = switch (status) {
-      'approved' => const Color(0xFFD4F7E8),
-      'rejected' => const Color(0xFFFFE4E1),
-      _ => const Color(0xFFFFF1CC),
+    final dateStr = item != null
+        ? _approvalDate(item['start_date'])
+        : '15 Sep 2026';
+    final status = item?['status']?.toString() ?? 'approved';
+
+    final (badgeBg, badgeText, badgeLabel) = switch (status) {
+      'approved' => (const Color(0xFFDDF5E8), const Color(0xFF18734A), 'Disetujui'),
+      'rejected' => (const Color(0xFFFCE8E8), const Color(0xFFB42318), 'Ditolak'),
+      _ => (const Color(0xFFFFE9CF), const Color(0xFFB05A00), 'Menunggu'),
     };
-    final startDate = request['start_date']?.toString() ?? '-';
-    final endDate = request['end_date']?.toString();
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: const Color(0xFFE0E5EB)),
-        borderRadius: BorderRadius.circular(13),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: HrdTheme.cardShadow,
       ),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _requestTypeLabel(request['type']?.toString() ?? ''),
-                  style: const TextStyle(
-                    color: Color(0xFF293548),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: HrdTheme.textDark,
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  endDate == null || endDate == startDate
-                      ? startDate
-                      : '$startDate - $endDate',
-                  style: const TextStyle(
-                    color: Color(0xFF8792A2),
-                    fontSize: 11,
-                  ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                dateStr,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: HrdTheme.textGrey,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
             decoration: BoxDecoration(
-              color: statusBackground,
+              color: badgeBg,
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              _requestStatusLabel(status),
+              badgeLabel,
               style: TextStyle(
-                color: statusColor,
-                fontSize: 10,
+                color: badgeText,
+                fontSize: 12,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -432,57 +584,32 @@ class _EmployeeLatestRequestCard extends StatelessWidget {
       ),
     );
   }
+
+  String _approvalDate(dynamic value) {
+    final date = DateTime.tryParse(value?.toString() ?? '');
+    if (date == null) return '';
+    return '${date.day} ${_monthName(date.month)} ${date.year}';
+  }
 }
 
-InputDecoration _requestInputDecoration({
-  String? hintText,
-  bool alignLabelWithHint = false,
-}) => InputDecoration(
-  hintText: hintText,
-  alignLabelWithHint: alignLabelWithHint,
-  filled: true,
-  fillColor: const Color(0xFFF9FAFB),
-  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-  border: OutlineInputBorder(
-    borderRadius: BorderRadius.circular(8),
-    borderSide: const BorderSide(color: Color(0xFFD7DDE5)),
-  ),
-  enabledBorder: OutlineInputBorder(
-    borderRadius: BorderRadius.circular(8),
-    borderSide: const BorderSide(color: Color(0xFFD7DDE5)),
-  ),
-  focusedBorder: OutlineInputBorder(
-    borderRadius: BorderRadius.circular(8),
-    borderSide: const BorderSide(color: Color(0xFF2862E9)),
-  ),
-);
-
-String _requestTypeLabel(String type) => switch (type) {
-  'cuti' => 'Cuti Tahunan',
-  'izin' => 'Izin',
-  'sakit' => 'Izin Sakit',
-  'lembur' => 'Lembur',
-  _ => 'Pengajuan',
-};
-
-String _requestStatusLabel(String status) => switch (status) {
-  'approved' => 'Disetujui',
-  'rejected' => 'Ditolak',
-  _ => 'Menunggu',
-};
-
 String _monthName(int month) => const [
-  'Januari',
-  'Februari',
-  'Maret',
-  'April',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
   'Mei',
-  'Juni',
-  'Juli',
-  'Agustus',
-  'September',
-  'Oktober',
-  'November',
-  'Desember',
+  'Jun',
+  'Jul',
+  'Agu',
+  'Sep',
+  'Okt',
+  'Nov',
+  'Des',
 ][month - 1];
 
+String _greeting(int hour) {
+  if (hour < 11) return 'Selamat pagi';
+  if (hour < 15) return 'Selamat siang';
+  if (hour < 18) return 'Selamat sore';
+  return 'Selamat malam';
+}
