@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../services/api_service.dart';
+import 'detail_pengajuan_screen.dart';
+import 'hrd_common_widgets.dart';
 
 class HrdApprovalsPanel extends StatefulWidget {
   const HrdApprovalsPanel({
@@ -47,120 +49,76 @@ class _HrdApprovalsPanelState extends State<HrdApprovalsPanel> {
     }
   }
 
-  Future<void> _showDetails(
-    Map<String, dynamic> item, {
-    String? requestedDecision,
-  }) async {
+  void _openDetailScreen(Map<String, dynamic> item) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => DetailPengajuanScreen(
+          item: item,
+          onDecide: (status, note) async {
+            await _decide(item, status, note);
+          },
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showQuickDecisionDialog(
+    Map<String, dynamic> item,
+    String requestedDecision,
+  ) async {
     final noteController = TextEditingController();
+    final isApproved = requestedDecision == 'approved';
+
     final decision = await showDialog<String>(
       context: context,
       builder: (context) {
-        final user = item['user'];
-        final userName = user is Map
-            ? user['name']?.toString() ?? 'Karyawan'
-            : 'Karyawan';
-        final type = item['type']?.toString() ?? '';
-        final start = _approvalDate(item['start_date']);
-        final end = _approvalDate(item['end_date']);
-        final createdAt = DateTime.tryParse(
-          item['created_at']?.toString() ?? '',
-        );
-
         return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Text(
-            requestedDecision == null
-                ? 'Detail Pengajuan'
-                : requestedDecision == 'approved'
-                ? 'Setujui pengajuan?'
-                : 'Tolak pengajuan?',
+            isApproved ? 'Setujui pengajuan?' : 'Tolak pengajuan?',
+            style: const TextStyle(fontWeight: FontWeight.w700),
           ),
-          content: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: CircleAvatar(
-                    child: Text(userName.isEmpty ? '?' : userName[0]),
-                  ),
-                  title: Text(userName),
-                  subtitle: Text(_approvalType(type)),
-                ),
-                const Divider(),
-                _ApprovalDetailRow(
-                  label: 'Tanggal',
-                  value: end.isEmpty || end == start ? start : '$start – $end',
-                ),
-                if (type == 'lembur') ...[
-                  _ApprovalDetailRow(
-                    label: 'Durasi',
-                    value:
-                        '${item['start_time'] ?? '--:--'} – ${item['end_time'] ?? '--:--'}',
-                  ),
-                ],
-                _ApprovalDetailRow(
-                  label: 'Diajukan',
-                  value: createdAt == null
-                      ? '—'
-                      : '${_approvalDate(createdAt.toIso8601String())}, ${createdAt.hour.toString().padLeft(2, '0')}:${createdAt.minute.toString().padLeft(2, '0')}',
-                ),
-                _ApprovalDetailRow(
-                  label: 'Alasan',
-                  value: item['reason']?.toString() ?? '—',
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Lampiran',
-                  style: TextStyle(
-                    color: Color(0xFF667085),
-                    fontSize: 12,
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Apakah Anda yakin ingin ${isApproved ? "menyetujui" : "menolak"} pengajuan ini?',
+                style: const TextStyle(color: HrdTheme.textGrey, fontSize: 13),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: noteController,
+                maxLines: 2,
+                decoration: InputDecoration(
+                  labelText: 'Catatan HRD (opsional)',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                const SizedBox(height: 4),
-                const Text('Tidak ada lampiran pada pengajuan ini.'),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: noteController,
-                  maxLines: 2,
-                  decoration: const InputDecoration(
-                    labelText: 'Catatan HRD (opsional)',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Tutup'),
+              child: const Text('Batal'),
             ),
-            if (requestedDecision == null) ...[
-              OutlinedButton(
-                onPressed: () => Navigator.pop(context, 'rejected'),
-                style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
-                child: const Text('Tolak'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(context, 'approved'),
-                child: const Text('Setujui'),
-              ),
-            ] else
-              FilledButton(
-                onPressed: () =>
-                    Navigator.pop(context, requestedDecision),
-                style: requestedDecision == 'rejected'
-                    ? FilledButton.styleFrom(backgroundColor: Colors.red)
-                    : null,
-                child: Text(
-                  requestedDecision == 'approved' ? 'Setujui' : 'Tolak',
+            FilledButton(
+              onPressed: () => Navigator.pop(context, requestedDecision),
+              style: FilledButton.styleFrom(
+                backgroundColor: isApproved ? HrdTheme.primaryBlue : Colors.red,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
+              child: Text(isApproved ? 'Setujui' : 'Tolak'),
+            ),
           ],
         );
       },
     );
+
     final note = noteController.text.trim();
     noteController.dispose();
 
@@ -207,44 +165,83 @@ class _HrdApprovalsPanelState extends State<HrdApprovalsPanel> {
   @override
   Widget build(BuildContext context) {
     final pending = _pending;
+
     return RefreshIndicator(
       onRefresh: _load,
+      color: HrdTheme.primaryBlue,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
         children: [
-          Text(
+          // Top LookIn Logo & Avatar
+          const HrdTopBar(showAvatar: true),
+          const SizedBox(height: 12),
+
+          // Title & Count
+          const Text(
             'Persetujuan',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+            style: TextStyle(
+              fontSize: 22,
               fontWeight: FontWeight.w700,
+              color: HrdTheme.textDark,
             ),
           ),
+          const SizedBox(height: 2),
           Text(
             '${pending.length} pengajuan menunggu',
-            style: const TextStyle(color: Color(0xFF7C8798)),
+            style: const TextStyle(
+              fontSize: 13,
+              color: HrdTheme.textGrey,
+            ),
           ),
           const SizedBox(height: 12),
+
+          // 4-step progress indicator
+          const HrdStepIndicator(activeStep: 0, totalSteps: 4),
+          const SizedBox(height: 16),
+
+          // State handlers
           if (_loading)
             const Padding(
-              padding: EdgeInsets.all(32),
-              child: Center(child: CircularProgressIndicator()),
+              padding: EdgeInsets.all(40),
+              child: Center(
+                child: CircularProgressIndicator(color: HrdTheme.primaryBlue),
+              ),
             )
           else if (_error != null)
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.error_outline, color: Colors.red),
-                title: Text(_error!),
-                trailing: IconButton(
-                  tooltip: 'Coba lagi',
-                  onPressed: _load,
-                  icon: const Icon(Icons.refresh),
-                ),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: HrdTheme.cardShadow,
+              ),
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.red),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(_error!, style: const TextStyle(fontSize: 13)),
+                  ),
+                  IconButton(
+                    onPressed: _load,
+                    icon: const Icon(Icons.refresh),
+                  ),
+                ],
               ),
             )
           else if (pending.isEmpty)
-            const Card(
-              child: Padding(
-                padding: EdgeInsets.all(20),
-                child: Text('Tidak ada pengajuan yang menunggu persetujuan.'),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: HrdTheme.cardShadow,
+              ),
+              padding: const EdgeInsets.all(24),
+              child: const Center(
+                child: Text(
+                  'Tidak ada pengajuan yang menunggu persetujuan.',
+                  style: TextStyle(color: HrdTheme.textGrey, fontSize: 13),
+                ),
               ),
             )
           else
@@ -259,196 +256,278 @@ class _HrdApprovalsPanelState extends State<HrdApprovalsPanel> {
     final name = user is Map
         ? user['name']?.toString() ?? 'Karyawan'
         : 'Karyawan';
-    final email = user is Map ? user['email']?.toString() ?? '' : '';
+    final division = user is Map
+        ? user['division']?.toString() ??
+            (item['division']?.toString() ?? 'Desain')
+        : 'Desain';
     final type = item['type']?.toString() ?? '';
     final start = _approvalDate(item['start_date']);
     final end = _approvalDate(item['end_date']);
-    final dateRange = end.isEmpty || end == start ? start : '$start – $end';
+    final dateRange = end.isEmpty || end == start ? start : '$start–$end';
+    final duration = _calculateDuration(item);
+    final reason = item['reason']?.toString() ?? '';
     final id = item['id']?.toString();
+    final isSaving = id != null && id == _savingId;
 
-    return Card(
-      color: Colors.white,
-      elevation: 2,
-      margin: const EdgeInsets.only(bottom: 10),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: const Color(0xFFE0EDFF),
-                  foregroundColor: const Color(0xFF2460D9),
-                  child: Text(name.isEmpty ? '?' : name[0].toUpperCase()),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        name,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      Text(
-                        email,
-                        style: const TextStyle(
-                          color: Color(0xFF7C8798),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
+    final hasDocument = type == 'sakit' || type == 'lembur';
+    final documentName = type == 'sakit'
+        ? 'surat_dokter.pdf'
+        : type == 'lembur'
+        ? 'surat_perintah_lembur.pdf'
+        : null;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: HrdTheme.cardShadow,
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Row: Avatar, Name, Department, Type Badge
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: const Color(0xFFDCE8FF),
+                child: Text(
+                  name.isEmpty ? '?' : name[0].toUpperCase(),
+                  style: const TextStyle(
+                    color: HrdTheme.primaryBlue,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                _RequestTypeBadge(type: type),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              '$dateRange${type == 'lembur' ? ' · ${item['start_time'] ?? ''}–${item['end_time'] ?? ''}' : ''}',
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
               ),
-            ),
-            const SizedBox(height: 5),
-            Text(
-              item['reason']?.toString() ?? '',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Color(0xFF667085), fontSize: 13),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: id != null && id == _savingId
-                        ? null
-                        : () => _showDetails(item),
-                    child: const Text('Detail'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: id != null && id == _savingId
-                        ? null
-                        : () => _showDetails(
-                            item,
-                            requestedDecision: 'rejected',
-                          ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.red,
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: HrdTheme.textDark,
+                      ),
                     ),
-                    child: const Text('Tolak'),
-                  ),
+                    Text(
+                      division,
+                      style: const TextStyle(
+                        color: HrdTheme.textGrey,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: id != null && id == _savingId
-                        ? null
-                        : () => _showDetails(
-                            item,
-                            requestedDecision: 'approved',
-                          ),
-                    child: const Text('Setujui'),
-                  ),
-                ),
-              ],
+              ),
+              _buildBadge(type),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // Date Range & Duration
+          Text(
+            '$dateRange · $duration',
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: HrdTheme.textDark,
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 4),
+
+          // Reason
+          Text(
+            reason,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Color(0xFF4B5563), fontSize: 13),
+          ),
+          const SizedBox(height: 8),
+
+          // Document line
+          Row(
+            children: [
+              Icon(
+                Icons.description_outlined,
+                size: 16,
+                color: hasDocument
+                    ? HrdTheme.primaryBlue
+                    : const Color(0xFF9CA3AF),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                hasDocument ? documentName! : 'Tanpa dokumen',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: hasDocument
+                      ? HrdTheme.primaryBlue
+                      : const Color(0xFF9CA3AF),
+                  fontWeight:
+                      hasDocument ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // 3 Action Buttons: Detail, Tolak, Setujui
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 38,
+                  child: OutlinedButton(
+                    onPressed: isSaving ? null : () => _openDetailScreen(item),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: HrdTheme.primaryBlue),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: EdgeInsets.zero,
+                    ),
+                    child: const Text(
+                      'Detail',
+                      style: TextStyle(
+                        color: HrdTheme.primaryBlue,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: SizedBox(
+                  height: 38,
+                  child: OutlinedButton(
+                    onPressed: isSaving
+                        ? null
+                        : () => _showQuickDecisionDialog(item, 'rejected'),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(
+                        color: HrdTheme.redBorder,
+                        width: 1.2,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: EdgeInsets.zero,
+                    ),
+                    child: const Text(
+                      'Tolak',
+                      style: TextStyle(
+                        color: HrdTheme.redBorder,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: SizedBox(
+                  height: 38,
+                  child: FilledButton(
+                    onPressed: isSaving
+                        ? null
+                        : () => _showQuickDecisionDialog(item, 'approved'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: HrdTheme.primaryBlue,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: EdgeInsets.zero,
+                    ),
+                    child: isSaving
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text(
+                            'Setujui',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
+                          ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
-}
 
-class _ApprovalDetailRow extends StatelessWidget {
-  const _ApprovalDetailRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 10),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(color: Color(0xFF7C8798), fontSize: 12),
-        ),
-        const SizedBox(height: 2),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
-      ],
-    ),
-  );
-}
-
-class _RequestTypeBadge extends StatelessWidget {
-  const _RequestTypeBadge({required this.type});
-
-  final String type;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = switch (type) {
-      'sakit' => const Color(0xFF7B3FB4),
-      'cuti' => const Color(0xFF2460D9),
-      'lembur' => const Color(0xFFB05A00),
-      _ => const Color(0xFF18734A),
-    };
-    final background = switch (type) {
-      'sakit' => const Color(0xFFF0E2FA),
-      'cuti' => const Color(0xFFE0EDFF),
-      'lembur' => const Color(0xFFFFE9CF),
-      _ => const Color(0xFFDDF5E8),
+  Widget _buildBadge(String type) {
+    final (bg, text, label) = switch (type) {
+      'sakit' => (HrdTheme.purpleBadgeBg, HrdTheme.purpleBadgeText, 'Sakit'),
+      'cuti' => (HrdTheme.blueBadgeBg, HrdTheme.blueBadgeText, 'Cuti'),
+      'lembur' => (HrdTheme.orangeBadgeBg, HrdTheme.orangeBadgeText, 'Lembur'),
+      _ => (HrdTheme.greenBadgeBg, HrdTheme.greenBadgeText, 'Izin'),
     };
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(20),
+        color: bg,
+        borderRadius: BorderRadius.circular(18),
       ),
       child: Text(
-        _approvalType(type),
-        style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w700),
+        label,
+        style: TextStyle(
+          color: text,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
+
+  String _calculateDuration(Map<String, dynamic> item) {
+    final type = item['type']?.toString();
+    if (type == 'lembur') {
+      return '4 jam';
+    }
+    final startDate = DateTime.tryParse(item['start_date']?.toString() ?? '');
+    final endDate = DateTime.tryParse(item['end_date']?.toString() ?? '');
+    if (startDate != null && endDate != null) {
+      final days = endDate.difference(startDate).inDays + 1;
+      return '$days hari';
+    }
+    return '1 hari';
+  }
+
+  String _approvalDate(dynamic value) {
+    final date = DateTime.tryParse(value?.toString() ?? '');
+    if (date == null) return '';
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agu',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
+    ];
+    return '${date.day} ${months[date.month - 1]} ${date.year}';
+  }
 }
-
-String _approvalType(String type) => switch (type) {
-  'cuti' => 'Cuti',
-  'izin' => 'Izin',
-  'sakit' => 'Sakit',
-  'lembur' => 'Lembur',
-  _ => 'Pengajuan',
-};
-
-String _approvalDate(dynamic value) {
-  final date = DateTime.tryParse(value?.toString() ?? '');
-  if (date == null) return '';
-  const months = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'Mei',
-    'Jun',
-    'Jul',
-    'Agu',
-    'Sep',
-    'Okt',
-    'Nov',
-    'Des',
-  ];
-  return '${date.day} ${months[date.month - 1]} ${date.year}';
-}
-

@@ -5,14 +5,20 @@ import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import 'dashboard_components.dart';
 import 'hrd/home_hrd.dart';
-import 'hrd/persetujuan_hrd.dart';
+import 'hrd/hrd_common_widgets.dart';
 import 'hrd/laporan_hrd.dart';
+import 'hrd/persetujuan_hrd.dart';
 import 'hrd/profile_hrd.dart';
 
 export 'hrd/home_hrd.dart';
-export 'hrd/persetujuan_hrd.dart';
 export 'hrd/laporan_hrd.dart';
+export 'hrd/persetujuan_hrd.dart';
 export 'hrd/profile_hrd.dart';
+export 'hrd/detail_pengajuan_screen.dart';
+export 'hrd/my_profile_hrd.dart';
+export 'hrd/settings_hrd.dart';
+export 'hrd/syarat_ketentuan_hrd.dart';
+export 'hrd/kebijakan_privasi_hrd.dart';
 
 class HrdDashboard extends StatefulWidget {
   const HrdDashboard({super.key, this.api});
@@ -25,12 +31,6 @@ class HrdDashboard extends StatefulWidget {
 
 class _HrdDashboardState extends State<HrdDashboard> {
   static const _titles = ['Home', 'Persetujuan', 'Laporan', 'Profil'];
-  static const _icons = [
-    Icons.home_outlined,
-    Icons.fact_check_outlined,
-    Icons.bar_chart_outlined,
-    Icons.person_outline,
-  ];
 
   late final ApiService _api;
   int _selectedIndex = 0;
@@ -81,7 +81,9 @@ class _HrdDashboardState extends State<HrdDashboard> {
 
   Widget _overview() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: CircularProgressIndicator(color: HrdTheme.primaryBlue),
+      );
     }
     if (_error != null) {
       return Center(
@@ -96,6 +98,9 @@ class _HrdDashboardState extends State<HrdDashboard> {
               const SizedBox(height: 12),
               FilledButton.icon(
                 onPressed: _loadOverview,
+                style: FilledButton.styleFrom(
+                  backgroundColor: HrdTheme.primaryBlue,
+                ),
                 icon: const Icon(Icons.refresh),
                 label: const Text('Coba lagi'),
               ),
@@ -131,36 +136,9 @@ class _HrdDashboardState extends State<HrdDashboard> {
     ];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F1F1),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFF1F1F1),
-        surfaceTintColor: const Color(0xFFF1F1F1),
-        titleSpacing: 18,
-        title: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.fingerprint, color: Color(0xFF1769FF), size: 25),
-            SizedBox(width: 5),
-            Text(
-              'LookIn',
-              style: TextStyle(
-                color: Color(0xFF17191D),
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          if (_selectedIndex == 3 && _editingProfile)
-            IconButton(
-              tooltip: 'Kembali ke profil',
-              onPressed: () => setState(() => _editingProfile = false),
-              icon: const Icon(Icons.close),
-            ),
-        ],
-      ),
+      backgroundColor: HrdTheme.scaffoldBg,
       body: SafeArea(
+        bottom: false,
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 600),
@@ -168,21 +146,69 @@ class _HrdDashboardState extends State<HrdDashboard> {
           ),
         ),
       ),
-      bottomNavigationBar: NavigationBar(
-        backgroundColor: Colors.white,
-        indicatorColor: const Color(0xFFE7F0FF),
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: (index) {
-          setState(() {
-            _selectedIndex = index;
-            if (index != 3) _editingProfile = false;
-          });
-        },
-        destinations: List.generate(
-          _titles.length,
-          (index) => NavigationDestination(
-            icon: Icon(_icons[index]),
-            label: _titles[index],
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: List.generate(_titles.length, (index) {
+                    final isSelected = _selectedIndex == index;
+                    return InkWell(
+                      onTap: () {
+                        setState(() {
+                          _selectedIndex = index;
+                          if (index != 3) _editingProfile = false;
+                        });
+                      },
+                      splashColor: Colors.transparent,
+                      highlightColor: Colors.transparent,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 6,
+                        ),
+                        child: Text(
+                          _titles[index],
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight:
+                                isSelected ? FontWeight.w700 : FontWeight.w500,
+                            color: isSelected
+                                ? HrdTheme.primaryBlue
+                                : const Color(0xFF8C95A6),
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+              // iOS-style home indicator bar
+              Container(
+                width: 134,
+                height: 4.5,
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+            ],
           ),
         ),
       ),

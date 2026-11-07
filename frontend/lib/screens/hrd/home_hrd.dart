@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'hrd_common_widgets.dart';
+
 class HrdHomePanel extends StatelessWidget {
   const HrdHomePanel({
     super.key,
@@ -32,17 +34,59 @@ class HrdHomePanel extends StatelessWidget {
 
     return RefreshIndicator(
       onRefresh: onRefresh,
+      color: HrdTheme.primaryBlue,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(10, 4, 10, 24),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
         children: [
+          // Top LookIn Logo
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Image.asset(
+                'assets/images/lookin_logo.png',
+                height: 24,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.fingerprint, color: HrdTheme.primaryBlue, size: 24),
+                    SizedBox(width: 4),
+                    Text(
+                      'LookIn',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: HrdTheme.textDark,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // User Greeting Row
           Row(
             children: [
-              const CircleAvatar(
-                radius: 24,
+              CircleAvatar(
+                radius: 26,
                 backgroundColor: Colors.white,
-                child: Icon(Icons.person, size: 30, color: Color(0xFF17191D)),
+                child: ClipOval(
+                  child: Image.asset(
+                    'assets/images/avatar_hrd.png',
+                    width: 52,
+                    height: 52,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const Icon(
+                      Icons.person,
+                      size: 32,
+                      color: HrdTheme.textDark,
+                    ),
+                  ),
+                ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -52,33 +96,46 @@ class HrdHomePanel extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        color: Color(0xFF1769FF),
-                        fontSize: 16,
+                        color: HrdTheme.primaryBlue,
+                        fontSize: 17,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 2),
-                    const Text(
-                      'Divisi SDM',
-                      style: TextStyle(color: Color(0xFF7C8798), fontSize: 13),
+                    Text(
+                      profile['division']?.toString() ?? 'Divisi SDM',
+                      style: const TextStyle(
+                        color: HrdTheme.textGrey,
+                        fontSize: 13,
+                      ),
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
+
+          // Cyan Date
           Text(
             _formattedDate(now),
-            style: const TextStyle(color: Color(0xFF00BCEB), fontSize: 13),
+            style: const TextStyle(
+              color: HrdTheme.cyanDate,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          const SizedBox(height: 3),
+          const SizedBox(height: 6),
+
+          // Main Attendance Summary Card
           _AttendanceSummaryCard(
             employeeCount: employees,
             presentCount: present,
             rate: rate,
           ),
           const SizedBox(height: 12),
+
+          // 3 Metric Cards: Cuti, Sakit, Menunggu
           Row(
             children: [
               _MetricCard(
@@ -100,21 +157,27 @@ class HrdHomePanel extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
+
+          // Notification Section Header
           Row(
             children: [
               const Expanded(
                 child: Text(
                   'Notifikasi terbaru',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                    color: HrdTheme.textDark,
+                  ),
                 ),
               ),
-              TextButton(
-                onPressed: onSeeRequests,
+              GestureDetector(
+                onTap: onSeeRequests,
                 child: const Text(
                   'Lihat semua',
                   style: TextStyle(
-                    color: Color(0xFF1769FF),
+                    color: HrdTheme.primaryBlue,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
@@ -122,16 +185,20 @@ class HrdHomePanel extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 8),
+
+          // Notifications List
           if (notifications.isEmpty)
-            const Card(
-              color: Colors.white,
-              child: Padding(
-                padding: EdgeInsets.all(14),
-                child: Text(
-                  'Belum ada notifikasi pengajuan.',
-                  style: TextStyle(color: Color(0xFF667085), fontSize: 13),
-                ),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: HrdTheme.cardShadow,
+              ),
+              padding: const EdgeInsets.all(16),
+              child: const Text(
+                'Belum ada notifikasi pengajuan.',
+                style: TextStyle(color: Color(0xFF667085), fontSize: 13),
               ),
             )
           else
@@ -156,31 +223,34 @@ class _AttendanceSummaryCard extends StatelessWidget {
   final double rate;
 
   @override
-  Widget build(BuildContext context) => Card(
-    color: Colors.white,
-    elevation: 3,
-    shadowColor: Colors.black26,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-    margin: EdgeInsets.zero,
-    child: Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 11),
+  Widget build(BuildContext context) {
+    final percentage = (rate * 100).round();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: HrdTheme.cardShadow,
+      ),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
                   'Total karyawan',
-                  style: TextStyle(fontSize: 13, color: Color(0xFF17191D)),
+                  style: TextStyle(fontSize: 13, color: HrdTheme.textDark),
                 ),
               ),
-              const Text(
+              Text(
                 'Hadir hari ini',
-                style: TextStyle(fontSize: 13, color: Color(0xFF17191D)),
+                style: TextStyle(fontSize: 13, color: HrdTheme.textDark),
               ),
             ],
           ),
+          const SizedBox(height: 4),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -189,8 +259,9 @@ class _AttendanceSummaryCard extends StatelessWidget {
                   '$employeeCount',
                   style: const TextStyle(
                     height: 1.05,
-                    fontSize: 32,
+                    fontSize: 34,
                     fontWeight: FontWeight.w700,
+                    color: HrdTheme.textDark,
                   ),
                 ),
               ),
@@ -198,32 +269,32 @@ class _AttendanceSummaryCard extends StatelessWidget {
                 '$presentCount',
                 style: const TextStyle(
                   height: 1.05,
-                  color: Color(0xFF176522),
-                  fontSize: 32,
+                  color: HrdTheme.greenPresent,
+                  fontSize: 34,
                   fontWeight: FontWeight.w700,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 7),
+          const SizedBox(height: 10),
           ClipRRect(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
             child: LinearProgressIndicator(
               value: rate,
-              minHeight: 10,
-              backgroundColor: const Color(0xFF92949A),
-              color: const Color(0xFF293FDB),
+              minHeight: 9,
+              backgroundColor: const Color(0xFF8E9299),
+              color: const Color(0xFF254EEB),
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Text(
-            '${(rate * 100).round()}% karyawan sudah hadir',
+            '$percentage% karyawan sudah hadir',
             style: const TextStyle(fontSize: 12, color: Color(0xFF6D7077)),
           ),
         ],
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _MetricCard extends StatelessWidget {
@@ -238,23 +309,23 @@ class _MetricCard extends StatelessWidget {
   final Color color;
 
   @override
-  Widget build(BuildContext context) => Expanded(
-    child: Card(
-      color: Colors.white,
-      elevation: 3,
-      shadowColor: Colors.black26,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(11, 8, 8, 7),
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: HrdTheme.cardShadow,
+        ),
+        padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Container(
-                  width: 12,
-                  height: 12,
+                  width: 11,
+                  height: 11,
                   decoration: BoxDecoration(
                     color: color,
                     shape: BoxShape.circle,
@@ -266,25 +337,30 @@ class _MetricCard extends StatelessWidget {
                     label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 12),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: HrdTheme.textDark,
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             Text(
               '$count',
               style: const TextStyle(
                 fontSize: 30,
                 height: 1.05,
                 fontWeight: FontWeight.w700,
+                color: HrdTheme.textDark,
               ),
             ),
           ],
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _NotificationCard extends StatelessWidget {
@@ -311,35 +387,46 @@ class _NotificationCard extends StatelessWidget {
         ? '$name mengajukan $type'
         : 'Pengajuan $type dari $name ${status == 'approved' ? 'disetujui' : 'ditolak'}';
 
-    return Card(
-      color: Colors.white,
-      elevation: 2,
-      shadowColor: Colors.black26,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
+    return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(11),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-          child: Row(
-            children: [
-              const Icon(Icons.circle, size: 13, color: Color(0xFF2860E8)),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  message,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 13),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: HrdTheme.cardShadow,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+            child: Row(
+              children: [
+                const Icon(Icons.circle, size: 12, color: Color(0xFF2860E8)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    message,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: HrdTheme.textDark,
+                    ),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                _timeAgo(item['created_at']),
-                style: const TextStyle(fontSize: 11, color: Color(0xFF9A9DA3)),
-              ),
-            ],
+                const SizedBox(width: 8),
+                Text(
+                  _timeAgo(item['created_at']),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: HrdTheme.textLightGrey,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
